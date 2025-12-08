@@ -82,6 +82,7 @@ const char *Algorithm::kRX_ARQ          = "rx/arq";
 const char *Algorithm::kRX_GRAFT        = "rx/graft";
 const char *Algorithm::kRX_SFX          = "rx/sfx";
 const char *Algorithm::kRX_YADA         = "rx/yada";
+const char *Algorithm::kRX_JUNO         = "rx/juno";
 #endif
 
 #ifdef XMRIG_ALGO_ARGON2
@@ -148,6 +149,7 @@ static const std::map<uint32_t, const char *> kAlgorithmNames = {
     ALGO_NAME(RX_GRAFT),
     ALGO_NAME(RX_SFX),
     ALGO_NAME(RX_YADA),
+    ALGO_NAME(RX_JUNO),
 #   endif
 
 #   ifdef XMRIG_ALGO_ARGON2
@@ -263,6 +265,8 @@ static const std::map<const char *, Algorithm::Id, aliasCompare> kAlgorithmAlias
                                     ALGO_ALIAS(RX_SFX,          "randomsfx"),
     ALGO_ALIAS_AUTO(RX_YADA),       ALGO_ALIAS(RX_YADA,         "randomx/yada"),
                                     ALGO_ALIAS(RX_YADA,         "randomyada"),
+    ALGO_ALIAS_AUTO(RX_JUNO),       ALGO_ALIAS(RX_JUNO,         "randomx/juno"),
+                                    ALGO_ALIAS(RX_JUNO,         "randomjuno"),
 #   endif
 
 #   ifdef XMRIG_ALGO_ARGON2
