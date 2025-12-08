@@ -291,6 +291,38 @@ void xmrig::CpuWorker<N>::start()
 #           ifdef XMRIG_ALGO_RANDOMX
             uint8_t* miner_signature_ptr = m_job.blob() + m_job.nonceOffset() + m_job.nonceSize();
             if (job.algorithm().family() == Algorithm::RANDOM_X) {
+
+#           ifdef SUPPORT_JUNOCASH
+            if (job.isJunocash()) {
+                // Junocash: 140-byte header (108 + 32 nonce); full 256-bit target, big-endian compare
+                uint8_t header[140];
+                memcpy(header, job.junocashHeader(), 108);
+                // initialize 32-byte nonce with some entropy
+                uint8_t nonce32[32] = {0};
+                {
+                    uint64_t seed = Chrono::steadyMSecs() ^ (uint64_t)(uintptr_t)this;
+                    for (int i=0;i<32;i+=8){ uint64_t v = seed * 0x9e3779b97f4a7c15ULL + i; memcpy(nonce32+i,&v,8);}                }
+                uint8_t hash[32];
+                do {
+                    memcpy(header+108, nonce32, 32);
+                    randomx_calculate_hash(m_vm, header, sizeof(header), hash);
+                    // compare as big-endian integers: reverse hash bytes
+                    uint8_t hash_be[32]; for (int i=0;i<32;i++) hash_be[i] = hash[31 - i];
+                    int cmp = memcmp(hash_be, job.junocashTarget(), 32);
+                    if (cmp <= 0) {
+                        JobResult res(job, 0, hash);
+                        res.setJunocashNonce(nonce32);
+                        JobResults::submit(res);
+                    }
+                    // increment 256-bit little-endian nonce
+                    for (int i=0;i<32;i++){ if (++nonce32[i] != 0) break; }
+                    m_count += 1;
+                    if (!nextRound()) break;
+                } while (!Nonce::isOutdated(Nonce::CPU, m_job.sequence()));
+                break;
+            }
+#           endif
+
                 if (first) {
                     first = false;
                     if (job.hasMinerSignature()) {
