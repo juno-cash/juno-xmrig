@@ -197,10 +197,18 @@ int64_t xmrig::Client::submit(const JobResult &result)
     const char *data  = result.result;
 #   else
     char *nonce = m_tempBuf.data();
-    char *data  = m_tempBuf.data() + 16;
-    char *signature = m_tempBuf.data() + 88;
+    char *data  = m_tempBuf.data() + 72;
+    char *signature = m_tempBuf.data() + 144;
 
-    Cvt::toHex(nonce, sizeof(uint32_t) * 2 + 1, reinterpret_cast<const uint8_t *>(&result.nonce), sizeof(uint32_t));
+#   ifdef SUPPORT_JUNOCASH
+    if (result.junocashNonce()) {
+        Cvt::toHex(nonce, 64 + 1, result.junocashNonce(), 32);
+        LOG_INFO("%s " CYAN("Junocash submit: nonce=%s"), tag(), nonce);
+    } else
+#   endif
+    {
+        Cvt::toHex(nonce, sizeof(uint32_t) * 2 + 1, reinterpret_cast<const uint8_t *>(&result.nonce), sizeof(uint32_t));
+    }
     Cvt::toHex(data, 65, result.result(), 32);
 
     if (result.minerSignature()) {
@@ -418,6 +426,45 @@ bool xmrig::Client::parseJob(const rapidjson::Value &params, int *code)
     }
 
     job.setSigKey(Json::getString(params, "sig_key"));
+
+#   ifdef SUPPORT_JUNOCASH
+    // Detect Junocash: 140-byte blob (280 hex chars) with rx/0 algorithm
+    if (blobData && job.algorithm().family() == Algorithm::RANDOM_X) {
+        const size_t blobLen = strlen(blobData);
+        if (blobLen == 280) {
+            // This is a Junocash job - 140 byte header (108 base + 32 nonce)
+            uint8_t header[140];
+            Cvt::fromHex(header, sizeof(header), blobData, blobLen);
+            job.setJunocashHeader(header);
+            LOG_INFO("%s " GREEN("Detected Junocash job! isJunocash=%d"), tag(), job.isJunocash());
+
+            // Convert compact target to 32-byte big-endian target
+            // Pool sends 8-byte LE target, we need 32-byte BE for comparison
+            const char *targetStr = Json::getString(params, "target");
+            if (targetStr) {
+                uint8_t target32[32] = {0};
+                const size_t targetLen = strlen(targetStr);
+                if (targetLen == 16) {
+                    // 8-byte target - place at bytes 0-7 in big-endian order
+                    uint8_t target8[8];
+                    Cvt::fromHex(target8, 8, targetStr, 16);
+                    // target8 is little-endian from pool, reverse to big-endian at start
+                    for (int i = 0; i < 8; i++) {
+                        target32[i] = target8[7 - i];
+                    }
+                } else if (targetLen == 8) {
+                    // 4-byte target - place at bytes 0-3 in big-endian order
+                    uint8_t target4[4];
+                    Cvt::fromHex(target4, 4, targetStr, 8);
+                    for (int i = 0; i < 4; i++) {
+                        target32[i] = target4[3 - i];
+                    }
+                }
+                job.setJunocashTarget(target32);
+            }
+        }
+    }
+#   endif
 
     m_job.setClientId(m_rpcId);
 

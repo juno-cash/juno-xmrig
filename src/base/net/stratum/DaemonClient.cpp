@@ -40,7 +40,11 @@
 #include "base/net/http/HttpData.h"
 #include "base/net/http/HttpListener.h"
 #include "base/net/stratum/SubmitResult.h"
+
 #include "base/net/tools/NetBuffer.h"
+#ifdef SUPPORT_JUNOCASH
+#include "junocash/JunocashTemplate.h"
+#endif
 #include "base/tools/bswap_64.h"
 #include "base/tools/cryptonote/Signatures.h"
 #include "base/tools/Cvt.h"
@@ -135,7 +139,36 @@ int64_t xmrig::DaemonClient::submit(const JobResult &result)
     if (result.jobId != m_currentJobId) {
         return -1;
     }
-
+#ifdef SUPPORT_JUNOCASH
+    if (m_coin.isValid() && m_coin.name() && std::string(m_coin.name())==std::string("Junocash")) {
+        if (!m_junoTpl || !result.junocashNonce()) {
+            return -1;
+        }
+        // Build header with winning nonce
+        std::vector<uint8_t> block;
+        block.reserve(140 + 1024);
+        block.insert(block.end(), m_junoTpl->header_base.begin(), m_junoTpl->header_base.begin()+108);
+        block.insert(block.end(), result.junocashNonce(), result.junocashNonce()+32);
+        // Append coinbase and other txs (hex to bytes)
+        auto hex2bin=[&](const std::string& hx){ std::vector<uint8_t> o; o.reserve(hx.size()/2); auto v=[](char c){ if(c>='0' and c<='9')return c-'0'; if(c>='a' and c<='f')return c-'a'+10; if(c>='A' and c<='F')return c-'A'+10; return 0; }; for(size_t i=0;i+1<hx.size();i+=2)o.push_back((uint8_t)((v(hx[i])<<4)|v(hx[i+1]))); return o; };
+        auto cb = hex2bin(m_junoTpl->coinbase_txn_hex);
+        block.insert(block.end(), cb.begin(), cb.end());
+        for (auto &txhex : m_junoTpl->txn_hex) { auto tb=hex2bin(txhex); block.insert(block.end(), tb.begin(), tb.end()); }
+        // Hex-encode full block
+        static const char hexmap[] = "0123456789abcdef";
+        std::string block_hex; block_hex.resize(block.size()*2);
+        for (size_t i=0;i<block.size();++i){ block_hex[i*2]=hexmap[block[i]>>4]; block_hex[i*2+1]=hexmap[block[i]&15]; }
+        using namespace rapidjson;
+        Document doc(kObjectType);
+        Value params(kArrayType);
+        params.PushBack(Value(block_hex.c_str(), (rapidjson::SizeType)block_hex.size(), doc.GetAllocator()), doc.GetAllocator());
+        JsonRequest::create(doc, m_sequence, "submitblock", params);
+        m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend);
+        std::map<std::string, std::string> headers;
+        headers.insert({"X-Hash-Difficulty", std::to_string(result.actualDiff())});
+        return rpcSend(doc, headers);
+    }
+#endif
     char *data = m_blocktemplateStr.data();
 
     const size_t sig_offset = m_job.nonceOffset() + m_job.nonceSize();
@@ -391,6 +424,38 @@ bool xmrig::DaemonClient::parseJob(const rapidjson::Value &params, int *code)
     Job job(false, m_pool.algorithm(), String());
 
     String blocktemplate = Json::getString(params, kBlocktemplateBlob);
+#ifdef SUPPORT_JUNOCASH
+    if (m_coin.isValid() && m_coin.name() && std::string(m_coin.name())==std::string("Junocash")) {
+        JunocashTemplate tpl;
+        m_junoTpl.reset(new JunocashTemplate());
+        if (!tpl.parse(params)) { return jobError("Invalid Junocash block template"); }
+        *m_junoTpl = tpl;
+        job.setAlgorithm(Algorithm::RX_JUNO);
+        job.setHeight(tpl.height);
+        // Approximate diff from target (placeholder)
+        uint64_t diff = 1;
+        job.setDiff(diff);
+        job.setJunocashHeader(tpl.header_base.data());
+        job.setJunocashTarget(tpl.target.data());
+        {
+            // Set RandomX seed hash from tpl.seed_hash
+            static const char hexmap[] = "0123456789abcdef";
+            char hex[65]; hex[64]='\0';
+            for (int i=0;i<32;i++){ unsigned v=tpl.seed_hash[i]; hex[i*2]=hexmap[v>>4]; hex[i*2+1]=hexmap[v&15]; }
+            job.setSeedHash(hex);
+        }
+        m_blocktemplateStr = String(); /* unused for Junocash submit */
+
+        m_currentJobId = Cvt::toHex(Cvt::randomBytes(4));
+        job.setId(m_currentJobId);
+        m_job              = std::move(job);
+        m_prevHash         = Json::getString(params, "prev_hash");
+        m_jobSteadyMs      = Chrono::steadyMSecs();
+        if (m_state == ConnectingState) { setState(ConnectedState); }
+        m_listener->onJobReceived(this, m_job, params);
+        return true;
+    }
+#endif
 
     if (blocktemplate.isNull()) {
         return jobError("Empty block template received from daemon."); // FIXME
@@ -553,10 +618,18 @@ int64_t xmrig::DaemonClient::getBlockTemplate()
     auto &allocator = doc.GetAllocator();
 
     Value params(kObjectType);
-    params.AddMember("wallet_address", m_user.toJSON(), allocator);
-    params.AddMember("extra_nonce", Cvt::toHex(Cvt::randomBytes(kBlobReserveSize)).toJSON(doc), allocator);
-
-    JsonRequest::create(doc, m_sequence, "getblocktemplate", params);
+#ifdef SUPPORT_JUNOCASH
+    if (m_coin.isValid() && m_coin.name() && std::string(m_coin.name())==std::string("Junocash")) {
+        // Junocash: the node constructs coinbase; no wallet/extranonce needed
+        JsonRequest::create(doc, m_sequence, "getblocktemplate", params);
+    }
+    else
+#endif
+    {
+        params.AddMember("wallet_address", m_user.toJSON(), allocator);
+        params.AddMember("extra_nonce", Cvt::toHex(Cvt::randomBytes(kBlobReserveSize)).toJSON(doc), allocator);
+        JsonRequest::create(doc, m_sequence, "getblocktemplate", params);
+    }
 
     return rpcSend(doc);
 }
