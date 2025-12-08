@@ -97,6 +97,18 @@ public:
     inline void setIndex(uint8_t index)                 { m_index = index; }
     inline void setPoolWallet(const String &poolWallet) { m_poolWallet = poolWallet; }
 
+#   ifdef SUPPORT_JUNOCASH
+    // Junocash-specific helpers
+    inline void setJunocashHeader(const uint8_t *hdr140) {
+        m_isJunocash = true;
+        memcpy(m_junoHeader, hdr140, sizeof(m_junoHeader));
+    }
+    inline void setJunocashTarget(const uint8_t *tgt32) { memcpy(m_junoTarget, tgt32, sizeof(m_junoTarget)); }
+    inline bool isJunocash() const { return m_isJunocash; }
+    inline const uint8_t* junocashHeader() const { return m_junoHeader; }
+    inline const uint8_t* junocashTarget() const { return m_junoTarget; }
+#   endif
+
 #   ifdef XMRIG_PROXY_PROJECT
     inline char *rawBlob()                              { return m_rawBlob; }
     inline const char *rawBlob() const                  { return m_rawBlob; }
@@ -161,6 +173,13 @@ private:
     uint64_t m_target   = 0;
     uint8_t m_blob[kMaxBlobSize]{ 0 };
     uint8_t m_index     = 0;
+
+#   ifdef SUPPORT_JUNOCASH
+    // Junocash (Zcash-style header + 32-byte nonce)
+    bool m_isJunocash = false;
+    uint8_t m_junoHeader[140]{};   // 108 header + 32 zeroed nonce initially
+    uint8_t m_junoTarget[32]{};    // big-endian target
+#   endif
 
 #   ifdef XMRIG_PROXY_PROJECT
     char m_rawBlob[kMaxBlobSize * 2 + 8]{};

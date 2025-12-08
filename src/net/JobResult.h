@@ -95,6 +95,12 @@ public:
     const uint64_t nonce;
     const uint64_t diff;
 
+#ifdef SUPPORT_JUNOCASH
+public:
+    inline void setJunocashNonce(const uint8_t *nonce32) { memcpy(m_junoNonce, nonce32, sizeof(m_junoNonce)); m_hasJunoNonce = true; }
+    inline const uint8_t* junocashNonce() const { return m_hasJunoNonce ? m_junoNonce : nullptr; }
+#endif
+
 private:
     uint8_t m_result[32]     = { 0 };
     uint8_t m_headerHash[32] = { 0 };
@@ -102,6 +108,10 @@ private:
 
     uint8_t m_minerSignature[64] = { 0 };
     bool m_hasMinerSignature = false;
+#ifdef SUPPORT_JUNOCASH
+    uint8_t m_junoNonce[32] = {0};
+    bool m_hasJunoNonce = false;
+#endif
 };
 
 
