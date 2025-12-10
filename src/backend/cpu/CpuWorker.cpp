@@ -294,28 +294,34 @@ void xmrig::CpuWorker<N>::start()
 
 #           ifdef SUPPORT_JUNOCASH
             if (job.isJunocash()) {
-                // Junocash: 140-byte header (108 + 32 nonce); full 256-bit target, big-endian compare
+                // Junocash: 140-byte header (108 base + 32 nonce); full 256-bit target, big-endian compare
+                // Copy all 140 bytes to preserve pool's extranonce at bytes 112-139
                 uint8_t header[140];
-                memcpy(header, job.junocashHeader(), 108);
-                // initialize 32-byte nonce with some entropy
-                uint8_t nonce32[32] = {0};
+                memcpy(header, job.junocashHeader(), 140);
+
+                // Use 4-byte counter at offset 108, preserving extranonce at 112-139
+                uint32_t nonce4 = 0;
                 {
+                    // Initialize with thread-specific offset to spread work across threads
                     uint64_t seed = Chrono::steadyMSecs() ^ (uint64_t)(uintptr_t)this;
-                    for (int i=0;i<32;i+=8){ uint64_t v = seed * 0x9e3779b97f4a7c15ULL + i; memcpy(nonce32+i,&v,8);}                }
+                    nonce4 = static_cast<uint32_t>(seed);
+                }
+
                 uint8_t hash[32];
                 do {
-                    memcpy(header+108, nonce32, 32);
+                    // Write 4-byte nonce at offset 108 (little-endian)
+                    memcpy(header + 108, &nonce4, 4);
+
                     randomx_calculate_hash(m_vm, header, sizeof(header), hash);
                     // compare as big-endian integers: reverse hash bytes
-                    uint8_t hash_be[32]; for (int i=0;i<32;i++) hash_be[i] = hash[31 - i];
+                    uint8_t hash_be[32]; for (int i = 0; i < 32; i++) hash_be[i] = hash[31 - i];
                     int cmp = memcmp(hash_be, job.junocashTarget(), 32);
                     if (cmp <= 0) {
-                        JobResult res(job, 0, hash);
-                        res.setJunocashNonce(nonce32);
+                        JobResult res(job, nonce4, hash);
                         JobResults::submit(res);
                     }
-                    // increment 256-bit little-endian nonce
-                    for (int i=0;i<32;i++){ if (++nonce32[i] != 0) break; }
+                    // increment 32-bit counter
+                    nonce4++;
                     m_count += 1;
                     if (!nextRound()) break;
                 } while (!Nonce::isOutdated(Nonce::CPU, m_job.sequence()));

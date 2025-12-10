@@ -200,15 +200,7 @@ int64_t xmrig::Client::submit(const JobResult &result)
     char *data  = m_tempBuf.data() + 72;
     char *signature = m_tempBuf.data() + 144;
 
-#   ifdef SUPPORT_JUNOCASH
-    if (result.junocashNonce()) {
-        Cvt::toHex(nonce, 64 + 1, result.junocashNonce(), 32);
-        LOG_INFO("%s " CYAN("Junocash submit: nonce=%s"), tag(), nonce);
-    } else
-#   endif
-    {
-        Cvt::toHex(nonce, sizeof(uint32_t) * 2 + 1, reinterpret_cast<const uint8_t *>(&result.nonce), sizeof(uint32_t));
-    }
+    Cvt::toHex(nonce, sizeof(uint32_t) * 2 + 1, reinterpret_cast<const uint8_t *>(&result.nonce), sizeof(uint32_t));
     Cvt::toHex(data, 65, result.result(), 32);
 
     if (result.minerSignature()) {
