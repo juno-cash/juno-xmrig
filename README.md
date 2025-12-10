@@ -21,7 +21,12 @@ Pre-built binaries are available from the [Releases](https://github.com/juno-cas
 ```
 
 ### Solo Mining
-Solo mining is **not supported** in juno-xmrig. For solo mining, use [junocashd](https://github.com/juno-cash/junocashd) instead.
+Connect directly to your Junocash node's RPC port:
+```bash
+./xmrig -o 127.0.0.1:8232 -u rpcuser -p rpcpassword --coin junocash --daemon
+```
+
+Replace `127.0.0.1:8232` with your node's RPC address/port, and `rpcuser`/`rpcpassword` with your node's RPC credentials (configured in `junocash.conf`).
 
 ## Protocol Differences from Standard XMRig
 | Aspect | Standard (Monero) | Junocash |
