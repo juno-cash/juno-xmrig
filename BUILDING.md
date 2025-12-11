@@ -61,6 +61,27 @@ cmake .. -G "Unix Makefiles"
 make -j$(nproc)
 ```
 
+### Cross-compile for Windows from Linux
+
+Build Windows binaries from a Linux host using MinGW-w64:
+
+```bash
+# Install MinGW-w64 toolchain
+sudo apt-get install mingw-w64 g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64 cmake wget autoconf automake libtool
+
+# Build cross-compiled dependencies (libuv, OpenSSL, hwloc)
+./scripts/build_deps_mingw64.sh
+
+# Build xmrig for Windows
+mkdir build-win64 && cd build-win64
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchain-mingw64.cmake \
+         -DCMAKE_BUILD_TYPE=Release \
+         -DXMRIG_DEPS=../deps-mingw64
+make -j$(nproc)
+```
+
+The resulting `xmrig.exe` is a statically linked Windows executable.
+
 ## CMake Options
 
 | Option | Default | Description |
