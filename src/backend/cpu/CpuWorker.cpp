@@ -323,10 +323,10 @@ void xmrig::CpuWorker<N>::start()
                 } else {
                     // Pool mining: use 4-byte nonce, preserve pool's extranonce at 112-139
                     memcpy(header + 108, job.junocashHeader() + 108, 32);
+                    // Use atomic nonce reservation to guarantee unique nonces across threads
                     uint32_t nonce4 = 0;
-                    {
-                        uint64_t seed = Chrono::steadyMSecs() ^ (uint64_t)(uintptr_t)this;
-                        nonce4 = static_cast<uint32_t>(seed);
+                    if (!Nonce::next(job.index(), &nonce4, kReserveCount, 0xFFFFFFFFULL)) {
+                        break;  // Nonce space exhausted
                     }
                     uint8_t hash[32];
                     do {
@@ -340,6 +340,12 @@ void xmrig::CpuWorker<N>::start()
                         }
                         nonce4++;
                         m_count += 1;
+                        // Request new nonce batch when current batch exhausted
+                        if ((nonce4 % kReserveCount) == 0) {
+                            if (!Nonce::next(job.index(), &nonce4, kReserveCount, 0xFFFFFFFFULL)) {
+                                break;
+                            }
+                        }
                         if (!nextRound()) break;
                     } while (!Nonce::isOutdated(Nonce::CPU, m_job.sequence()));
                 }
