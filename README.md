@@ -17,10 +17,10 @@ make -j$(nproc)
 ### 2. Mine
 
 ```bash
-./xmrig -o mine.junopool.org:3333 -u YOUR_JUNO_ADDRESS -a rx/juno
+./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
 ```
 
-Replace `YOUR_JUNO_ADDRESS` with your Juno Cash **unified address** (starts with `j1...`).
+Replace `j1YourAddress...` with your Juno Cash **unified address** (starts with `j1...`).
 
 ## Options
 
@@ -35,16 +35,11 @@ Replace `YOUR_JUNO_ADDRESS` with your Juno Cash **unified address** (starts with
 
 ```bash
 # Use 4 threads
-./xmrig -o mine.junopool.org:3333 -u j1YourAddress... -a rx/juno -t 4
+./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno -t 4
 
 # Use all threads
-./xmrig -o mine.junopool.org:3333 -u j1YourAddress... -a rx/juno
+./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
 ```
-
-## Pool
-
-- Website: https://junopool.org
-- Stratum: mine.junopool.org:3333
 
 ## Credits
 
