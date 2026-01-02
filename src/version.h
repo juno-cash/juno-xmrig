@@ -19,9 +19,9 @@
 #ifndef XMRIG_VERSION_H
 #define XMRIG_VERSION_H
 
-#define APP_ID        "juno-xmrig"
-#define APP_NAME      "Juno-XMRig"
-#define APP_DESC      "Juno XMRig miner"
+#define APP_ID        "junorig"
+#define APP_NAME      "JunoRig"
+#define APP_DESC      "JunoRig miner"
 #define APP_VERSION   "6.24.0-juno.6"
 #define APP_DOMAIN    "xmrig.com"
 #define APP_SITE      "www.xmrig.com"

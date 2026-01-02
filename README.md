@@ -1,4 +1,4 @@
-# Junorig
+# JunoRig
 
 Juno Cash miner based on XMRig with support for the `rx/juno` algorithm.
 
@@ -6,15 +6,15 @@ Juno Cash miner based on XMRig with support for the `rx/juno` algorithm.
 
 
 ## Download
-Pre-built binaries are available from the [Releases](https://github.com/juno-cash/juno-xmrig/releases) page:
-- **Linux x64**: `xmrig-vX.X.X-linux-x64.zip`
-- **macOS x64**: `xmrig-vX.X.X-macos-x64.zip` (requires macOS 14+ Sonoma)
-- **macOS ARM64** (Apple Silicon): `xmrig-vX.X.X-macos-arm64.zip` (requires macOS 14+ Sonoma)
+Pre-built binaries are available from the [Releases](https://github.com/juno-cash/junorig/releases) page:
+- **Linux x64**: `junorig-vX.X.X-linux-x64.tar.gz`
+- **macOS x64**: `junorig-vX.X.X-macos-x64.tar.gz` (requires macOS 14+ Sonoma)
+- **macOS ARM64** (Apple Silicon): `junorig-vX.X.X-macos-arm64.tar.gz` (requires macOS 14+ Sonoma)
 
 ### Mine
 
 ```bash
-./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
+./junorig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
 ```
 
 Replace `j1YourAddress...` with your Juno Cash **unified address** (starts with `j1...`).
@@ -32,10 +32,10 @@ Replace `j1YourAddress...` with your Juno Cash **unified address** (starts with 
 
 ```bash
 # Use 4 threads
-./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno -t 4
+./junorig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno -t 4
 
 # Use all threads
-./xmrig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
+./junorig -o pool.example.com:3333 -u j1YourAddress... -a rx/juno
 ```
 
 ### Build from source
@@ -45,8 +45,8 @@ See [BUILDING.md](BUILDING.md) for detailed build instructions for all platforms
 
 ### Quick Build (Linux/macOS)
 ```bash
-git clone https://github.com/juno-cash/juno-xmrig
-cd juno-xmrig
+git clone https://github.com/juno-cash/junorig
+cd junorig
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
